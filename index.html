@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html ng-app="scriptApp">
+<head>
+  <meta charset="utf-8">
+  <title>ASHI Script Playground</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.14/angular.min.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background-color: #d4e6f1;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      display: flex;
+      padding: 20px;
+    }
+    .left-panel, .right-panel {
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 20px;
+    }
+    .left-panel {
+      width: 300px;
+      margin-right: 20px;
+    }
+    .right-panel {
+      flex-grow: 1;
+    }
+    .script-btn {
+      background-color: #fbfcfc;
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 8px;
+      cursor: pointer;
+      color: black;
+    }
+    .script-btn:hover {
+      background-color: #808b96;
+      color: #fdfefe;
+    }
+    .script-btn.selected {
+      background-color: #808b96;
+      color: #fdfefe;
+    }
+    .run-btn {
+      background-color: #FF6B6B;
+      color: white;
+      padding: 10px;
+      border-radius: 10px;
+      text-align: center;
+      margin-top: 30px;
+      cursor: pointer;
+    }
+    .run-btn:hover {
+      background-color: #CC5252;
+    }
+    textarea {
+      width: 100%;
+      border-radius: 10px;
+      padding: 10px;
+      background-color: #F0F0F0;
+      font-family: Consolas, monospace;
+      font-size: 14px;
+    }
+    .clock {
+      margin-top: 20px;
+      font-size: 14px;
+      color: #555555;
+      text-align: center;
+    }
+  </style>
+</head>
+<body ng-controller="ScriptController">
+
+  <div class="container">
+    <div class="left-panel">
+      <h3>Predefined Scripts</h3>
+      <div ng-repeat="(name, info) in scriptsInfo">
+        <div class="script-btn" ng-click="selectScript(name)"
+             ng-class="{'selected': selectedScript === name}">
+          {{$index + 1}}. {{name}}
+        </div>
+      </div>
+      <div class="run-btn" ng-click="runScript()">▶ Run Script</div>
+      <div class="clock">{{clock}}</div>
+    </div>
+
+    <div class="right-panel">
+      <h3>Script Description</h3>
+      <textarea rows="5" ng-model="scriptDescription" readonly></textarea>
+      <h3>Message</h3>
+      <textarea rows="15" ng-model="scriptOutput" readonly></textarea>
+    </div>
+  </div>
+
+  <script>
+    angular.module('scriptApp', [])
+      .controller('ScriptController', function($scope, $interval) {
+
+        // === Script List (matches your desktop list)
+        $scope.scriptsInfo = {
+          "Split PDF": {
+            "description": "Generates multiple PDFs grouped by quotation number from a single input PDF.",
+            "filename": "split_pdf.py"
+          },
+          "4X4 Picture Report": {
+            "description": "4x4 picture report with item code, images, description, price, and quoted quantity.",
+            "filename": "4x4_picture_report.py"
+          },
+          "4X4 Picture Report with Sales & Stock": {
+            "description": "Includes Style Code, 4-year sales quantity, stock in hand, open SO & BOL.",
+            "filename": "4X4 Picture Report with Sales & Stock.py"
+          },
+          "4×4 Picture Report with Barcode and Tag Price": {
+            "description": "4x4 picture report with barcodes and tag prices.",
+            "filename": "4x4_Picture_Report_with_Barcode_and_Tag_Price.py"
+          },
+          "Top Style Picture Report with Barcode": {
+            "description": "Product details with barcode and image for top styles.",
+            "filename": "Top Style Picture Report with Barcode.py"
+          },
+          "Top Style Picture Report": {
+            "description": "Top style image report without barcode, only with price.",
+            "filename": "Top Style Picture Report.py"
+          },
+          "Display Tray Picture Report": {
+            "description": "Picture report from ID, Name, barcode input.",
+            "filename": "Display Tray Picture Report.py"
+          },
+          "Display Tray Sticker With Barcode": {
+            "description": "PDF stickers with barcode layout for display trays.",
+            "filename": "Display_Tray_Sticker_With_Barcode.py"
+          }
+        };
+
+        $scope.selectedScript = null;
+        $scope.scriptDescription = "";
+        $scope.scriptOutput = "";
+
+        $scope.selectScript = function(name) {
+          $scope.selectedScript = name;
+          $scope.scriptDescription = $scope.scriptsInfo[name].description;
+          $scope.scriptOutput = "";
+        };
+
+        $scope.runScript = function() {
+          if (!$scope.selectedScript) {
+            $scope.scriptOutput = "❌ Please select a script.";
+            return;
+          }
+
+          $scope.scriptOutput = "⏳ Executing script, please wait...";
+
+          fetch("http://localhost:5000/run", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ script: $scope.scriptsInfo[$scope.selectedScript].filename })
+          })
+          .then(response => response.json())
+          .then(data => {
+            $scope.scriptOutput = data.output || ("❌ Error: " + data.error);
+            $scope.$apply();
+          })
+          .catch(error => {
+            $scope.scriptOutput = "❌ Failed to call backend: " + error;
+            $scope.$apply();
+          });
+        };
+
+        // === Live Clock
+        $interval(function() {
+          $scope.clock = new Date().toLocaleString();
+        }, 1000);
+      });
+  </script>
+
+</body>
+</html>
